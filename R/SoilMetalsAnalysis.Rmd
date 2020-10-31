@@ -5,6 +5,9 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readr)
 ```
 
 ## R Markdown
@@ -26,3 +29,107 @@ plot(pressure)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+1) Importing the Data
+```{r, warning=FALSE, message=FALSE}
+ICPMS_imported <- read.csv ("~/Chem313Lab05AJed/Chem311_JCWSoil/ICPMS_Data.csv", skip=1, na="N/A")
+sample_key <- read.csv("~/Chem313Lab05AJed/Chem311_JCWSoil/Sample_Key.csv", skip=0)
+
+#Preview Data
+ICPMS_imported
+sample_key
+```
+
+2) Tidying the Data
+```{r Tidying RSD Data, warning=FALSE, message=FALSE}
+RSD_data <- ICPMS_imported %>%
+  select(Cr52 = CPS.RSD,
+         Cr53 = CPS.RSD.1,
+         As75 = CPS.RSD.2,
+         Cd111 = CPS.RSD.3,
+         Cd114 = CPS.RSD.4,
+         Pb208 = CPS.RSD.5,
+         Ge_RSD = CPS.RSD.7,
+         Sample.Key) %>%
+  pivot_longer(1:6,
+               names_to = "metal",
+               values_to = "RSD")
+```
+
+```{r Tidying RSD Data, warning=FALSE, message=FALSE}
+ICPMS_tidy <- ICPMS_imported %>%
+  select(Cr52 = CPS,
+         Cr53 = CPS.1,
+         As75 = CPS.2,
+         Cd111 = CPS.3,
+         Cd114 = CPS.4,
+         Pb208 = CPS.5,
+         Ge_RSD = CPS.7,
+         Sample.Key) %>%
+  pivot_longer(1:6,
+               names_to = "metal",
+               values_to = "CPS")%>%
+#mutating in the RSD data
+mutate(RSD = RSD_data$RSD/RSD_data$Ge_RSD,
+       CPS=CPS/Ge_RSD)%>%#ISTD Correction
+  select(-Ge_RSD)
+
+all(RSD_data$Sample.Key==ICPMS_tidy$Sample.Key, RSD_data$metal==ICPMS_tidy$metal)
+```
+
+4) merging sample
+```{r merging sample key}
+ICPMS_merged <- merge(ICPMS_tidy, sample_key)
+
+#Preview merged data
+ICPMS_merged
+```
+
+5) Remove clutter
+```{r, warning=FALSE}
+rm(list=setdiff(ls(), "ICPMS_merged"))
+```
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+1) Data Import
+```{r, warning=FALSE, message=FALSE}
+library(readr)
+AA_Imported <- read_csv("/home/jeda/Chem313Lab05AJed/Chem311_JCWSoil/AA_Data.csv", col_types = cols(`%RSD` = col_number(), 
+    `Sample Key` = col_number()), skip = 4)
+
+AA_DataFull <- read_csv("/home/jeda/Chem313Lab05AJed/Chem311_JCWSoil/AA_Data.csv", skip = 4)
+
+#Preview
+AA_Imported
+AA_DataFull
+```
+
+```{r Tidying RSD Data, warning=FALSE, message=FALSE}
+AA_DataCut <- AA_DataFull[!(AA_DataFull$`Sample Key`=="Sample Blank" | AA_DataFull$`Sample Key`=="check10"),]
+
+#ther is definitly a better way to do this but vectors created to match number of rows
+vec <- c("Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr")
+vec2 <- c("Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr")
+
+AA_DataCut["Metal"] <- vec
+
+AA_NewAssign <- AA_DataFull
+#change cell Sample Blank to 0
+AA_NewAssign$`Sample Key` <- gsub("Sample Blank", 0, AA_NewAssign$`Sample Key`) 
+#change cell check10 to 100
+AA_NewAssign$`Sample Key` <- gsub("check10", 100, AA_NewAssign$`Sample Key`) 
+AA_NewAssign["Metal"] <- vec2
+
+AA_NewAssign
+AA_DataCut
+```
+
+Save csv Data
+```{r}
+write.csv(ICPMS_merged, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/ICPMS_tidy.csv")
+write.csv(AA_NewAssign, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/AA_tidy.csv")
+```
+
