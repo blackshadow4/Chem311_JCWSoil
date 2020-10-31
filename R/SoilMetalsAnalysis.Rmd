@@ -110,9 +110,7 @@ AA_DataFull
 ```{r Tidying RSD Data, warning=FALSE, message=FALSE}
 AA_DataCut <- AA_DataFull[!(AA_DataFull$`Sample Key`=="Sample Blank" | AA_DataFull$`Sample Key`=="check10"),]
 
-#ther is definitly a better way to do this but vectors created to match number of rows
-vec <- c("Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr")
-vec2 <- c("Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr", "Cr")
+vec <- c("Cr")
 
 AA_DataCut["Metal"] <- vec
 
@@ -121,7 +119,7 @@ AA_NewAssign <- AA_DataFull
 AA_NewAssign$`Sample Key` <- gsub("Sample Blank", 0, AA_NewAssign$`Sample Key`) 
 #change cell check10 to 100
 AA_NewAssign$`Sample Key` <- gsub("check10", 100, AA_NewAssign$`Sample Key`) 
-AA_NewAssign["Metal"] <- vec2
+AA_NewAssign["Metal"] <- vec
 
 AA_NewAssign
 AA_DataCut
