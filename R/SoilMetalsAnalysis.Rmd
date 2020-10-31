@@ -106,20 +106,20 @@ AA_DataFull <- read_csv("/home/jeda/Chem313Lab05AJed/Chem311_JCWSoil/AA_Data.csv
 AA_Imported
 AA_DataFull
 ```
-
+2) Set up Data
 ```{r Tidying RSD Data, warning=FALSE, message=FALSE}
 AA_DataCut <- AA_DataFull[!(AA_DataFull$`Sample Key`=="Sample Blank" | AA_DataFull$`Sample Key`=="check10"),]
 
-vec <- c("Cr")
+vec <- c("Cr") #data for column I wish to add, one input = it repeats for full table
 
-AA_DataCut["Metal"] <- vec
+AA_DataCut["Metal"] <- vec #add column
 
 AA_NewAssign <- AA_DataFull
 #change cell Sample Blank to 0
 AA_NewAssign$`Sample Key` <- gsub("Sample Blank", 0, AA_NewAssign$`Sample Key`) 
 #change cell check10 to 100
 AA_NewAssign$`Sample Key` <- gsub("check10", 100, AA_NewAssign$`Sample Key`) 
-AA_NewAssign["Metal"] <- vec
+AA_NewAssign["Metal"] <- vec #add column
 
 AA_NewAssign
 AA_DataCut
