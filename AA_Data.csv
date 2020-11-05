@@ -2,7 +2,7 @@ Analysis,,
 Filename,C:\Documents and Settings\Student\Desktop\Analytical Lab 2019\Analysis1.anl,
 Element,"Cr, ",
 Date,Thu Nov 21 15:32:17 2019,
-Sample Key,Mean Abs.,%RSD
+Sample.Key,Mean Abs.,%RSD
 Sample Blank,0.0005,HIGH
 check10,0.1086,3.87
 check10,0.1161,4.45
