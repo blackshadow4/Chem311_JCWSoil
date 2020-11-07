@@ -144,4 +144,3 @@ write.csv(ICPMS_merged, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/ICPMS_ti
 write.csv(AA_NAmerged, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/AA_tidy1.csv")
 write.csv(AA_Dmerged, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/AA_tidy2.csv")
 ```
-
