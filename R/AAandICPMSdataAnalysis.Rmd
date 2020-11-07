@@ -179,7 +179,7 @@ mass_e <- 0.001
 dil_1010_e <- sqrt(1^2 + 10^2)
 dil_e <- sqrt((dil_1010_e/1010)^2 + (1/10)^2) #error in 101 dilution factor
 
-sample_data <- merge(ICPMS_tidy_example, sample_data_mb)%>% #THis adds in important details such as soil mass
+sample_data <- merge(ICPMS_tidy_example, sample_data_mb)%>% #This adds in important details such as soil mass
   unique()%>%
   mutate(conc_blanked = conc_dil_blanked*(total_volume/1000)/(mass_of_soil/1000)*101, #101 is the factor diluted by at OHSU to make the solutions dilute enough to run ICPMS on.
          conc_blanked_error = conc_blanked*
@@ -311,12 +311,51 @@ Cr_data <- Cr_d1 %>%
 Cr_data
 ```
 
+```{r section by section TEST}
+vol_e <- 1
+mass_e <- 0.001
+dil_1010_e <- sqrt(1^2 + 10^2)
+dil_e <- sqrt((dil_1010_e/1010)^2 + (1/10)^2) #error in 101 dilution factor
+AAsample_data <- merge(AA_tidy_filter, Cr_data) %>% 
+  unique()%>%
+  mutate(AAconc_blanked = AA_conc*(total_volume/1000)/(mass_of_soil/1000)*101,
+         AAconc_blanked_error = AAconc_blanked*
+           sqrt((AA_conc_error/AA_conc)^2 + 
+                  (dil_e/101)^2 +
+                  (mass_e/mass_of_soil)^2 +
+                  (vol_e/total_volume)^2),
+         conc_unblanked = xCr*(total_volume/1000)/(mass_of_soil/1000)*101,
+         conc_unblanked_error = conc_unblanked*
+           sqrt((xCr_uncertanty/xCr)^2 +
+                  (dil_e/101)^2 +
+                  (mass_e/mass_of_soil)^2 +
+                  (vol_e/total_volume)^2))
+AA_sample_data<- subset(AAsample_data, select = -c(ID, concentration, type, mass_of_soil, total_volume, percent_rsd, analyst, mean_abs, AA_conc, AA_conc_error, AA_abs, AA_abs_error, xCr, xCr_uncertanty))
+
+AA_sample_data
+```
+
+```{r}
+AA_sample_data["sample_key"] <- Cr_data$sample_key
+AA_sample_data["site"] <- Cr_data$site
+
+AA_d1 <- subset(AA_sample_data, select = -c(conc_unblanked, conc_unblanked_error))
+AA_data_conc <- AA_d1 %>% 
+  rename(
+    AA_conc = AAconc_blanked,
+    AA_conc_error = AAconc_blanked_error
+    )
+AA_data_conc
+```
+
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ```{r}
 ICPMS_d1 <- subset(sample_data, select = -c(metal, analyst, X1, conc_unblanked, conc_unblanked_error))
+ICPMS_d2 <- subset(sample_data, select = -c(metal, analyst, X1, conc_unblanked, conc_unblanked_error))
+
 ICPMS_conc <- ICPMS_d1 %>% 
   rename(
     ICPMS_conc = conc_blanked,
@@ -327,7 +366,12 @@ ICPMS_conc
 ```
 
 ```{r}
-Data_Compair <- merge(ICPMS_conc, Cr_data)
+Data_Compair <- merge(ICPMS_conc, AA_data_conc)
 Data_Compair
+```
+
+Save csv file
+```{r}
+write.csv(Data_Compair, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/Cr_AA_ICPMS_data.csv")
 ```
 
