@@ -16,6 +16,9 @@ When you click the **Knit** button a document will be generated that includes bo
 
 
 ```{r}
+library(readr)
+ICPMS_tidy_example <- read_csv("~/Chem313Lab05AJed/Chem311_JCWSoil/Data/ICPMS_tidy_example.csv")
+AA_tidy_example <- read_csv("~/Chem313Lab05AJed/Chem311_JCWSoil/Data/tidy_AA.csv")
 ICPMS_tidy_example
 ```
 
@@ -139,7 +142,7 @@ run_sites <- function(Function) {
 6) Analyze the method blank and all the samples
 ```{r}
 MB <- sample_analysis("MB") #(micrograms/kg)
-uncor_sample <- run_sites(sample_analysis) #values do not account for dilutions ####!!!!### (mucrograms/kg)
+uncor_sample <- run_sites(sample_analysis) #values do not account for dilutions (mucrograms/kg)
 
 #Preview
 MB
@@ -200,6 +203,8 @@ sample_data <- merge(ICPMS_tidy_example, sample_data_mb)%>% #THis adds in import
          -conc_dil_blanked_error,
          -conc_dil,
          -conc_dil_error)
+
+sample_data
 ```
 
 9) Clean up the environment
@@ -219,10 +224,11 @@ AA_tidy_example #name of data_frame being analyzed
 ```{r}
 sample_sites <- unique(filter(AA_tidy_example, site!="MB", site!="")$site) # excludeing method blank and quality control from list of sites
 #Only Cr so no need to seperate by metal
+AA_tidy_filter <- filter(AA_tidy_example, site!="MB", site!="")
 
 #Preview the lists to check for potential issues:
 sample_sites
-
+AA_tidy_filter
 ```
 
 ```{r}
@@ -247,10 +253,81 @@ intercept_uncertanty
 print("Residual standard error")
 print(y_uncertanty)
 
-paste("y(+/-", y_uncertanty, ")=", slope, "(+/-", slope_uncertanty, ")x-", intercept, "(+/-", intercept_uncertanty, ")")
+paste("y(+/-", y_uncertanty, ")=", slope, "(+/-", slope_uncertanty, ")x+", intercept, "(+/-", intercept_uncertanty, ")")
 
 plot(conc_Cr, AA_abs, main="AA Data [Cr]",
   xlab="concentration of Cr", ylab="Absorbance")
 abline(fit)
+```
+
+```{r concentrations}
+for (mean_abs in AA_tidy_filter){
+xCr <- ((AA_tidy_filter$mean_abs-intercept)/slope)
+
+#Uncertanties
+xCr_uncertanty <-sqrt(((sqrt((y_uncertanty)^2 + (intercept_uncertanty)^2)))^2 + (slope_uncertanty/slope)^2)*xCr
+}
+
+#Preview
+xCr
+xCr_uncertanty
+```
+
+```{r average MB}
+AA_MB <- subset(AA_tidy_example %>%
+  filter(site == "MB"), select = -c(concentration, percent_rsd, mass_of_soil, type, ID))#(micrograms/kg)
+AA_MB
+
+#average & uncertanty
+MB_absAve <- mean(AA_MB$mean_abs)
+MB_sdAve <- sd(AA_MB$mean_abs)
+MB_absAve
+MB_sdAve
+```
+
+```{r subtract MB-absorbance from Cr mean_abs}
+for (mean_abs in AA_tidy_filter){
+yCr_corrected <- ((AA_tidy_filter$mean_abs-MB_absAve))
+
+#Uncertanties
+yCr_corrected_uncertanty <- sqrt((y_uncertanty)^2 + (MB_sdAve)^2)
+}
+
+yCr_corrected
+yCr_corrected_uncertanty
+```
+
+```{r}
+Cr_d1 <- data.frame( AA_tidy_filter$sample_key, AA_tidy_filter$site, xCr, xCr_uncertanty, yCr_corrected, yCr_corrected_uncertanty)
+Cr_data <- Cr_d1 %>% 
+  rename(
+    sample_key = AA_tidy_filter.sample_key,
+    site = AA_tidy_filter.site,
+    AA_conc = xCr,
+    AA_conc_error = xCr_uncertanty,
+    AA_abs = yCr_corrected,
+    AA_abs_error = yCr_corrected_uncertanty
+    )
+Cr_data
+```
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+```{r}
+ICPMS_d1 <- subset(sample_data, select = -c(metal, analyst, X1, conc_unblanked, conc_unblanked_error))
+ICPMS_conc <- ICPMS_d1 %>% 
+  rename(
+    ICPMS_conc = conc_blanked,
+    ICPMS_conc_error = conc_blanked_error
+    )
+
+ICPMS_conc
+```
+
+```{r}
+Data_Compair <- merge(ICPMS_conc, Cr_data)
+Data_Compair
 ```
 
