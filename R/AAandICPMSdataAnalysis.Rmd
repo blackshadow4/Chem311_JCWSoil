@@ -256,7 +256,7 @@ print(y_uncertanty)
 paste("y(+/-", y_uncertanty, ")=", slope, "(+/-", slope_uncertanty, ")x+", intercept, "(+/-", intercept_uncertanty, ")")
 
 plot(conc_Cr, AA_abs, main="AA Data [Cr]",
-  xlab="concentration of Cr", ylab="Absorbance")
+  xlab="concentration of Cr (ppm)", ylab="Absorbance")
 abline(fit)
 ```
 
@@ -310,7 +310,17 @@ Cr_data <- Cr_d1 %>%
     )
 Cr_data
 ```
+```{r}
+AA_conc_correct <- Cr_data$AA_conc*1000
+AA_conc_error_correct <- Cr_data$AA_conc_error*1000
 
+Cr_data_ppb <- data.frame(Cr_data$sample_key, Cr_data$site, AA_conc_correct, AA_conc_error_correct)
+
+Cr_data_ppb
+```
+
+
+THIS IS BAD DATA: IGNORE
 ```{r section by section TEST}
 vol_e <- 1
 mass_e <- 0.001
@@ -336,17 +346,17 @@ AA_sample_data
 ```
 
 ```{r}
-AA_sample_data["sample_key"] <- Cr_data$sample_key
-AA_sample_data["site"] <- Cr_data$site
-
-AA_d1 <- subset(AA_sample_data, select = -c(conc_unblanked, conc_unblanked_error))
-AA_data_conc <- AA_d1 %>% 
+AA_data_conc <- Cr_data_ppb %>% 
   rename(
-    AA_conc = AAconc_blanked,
-    AA_conc_error = AAconc_blanked_error
+    AA_conc = AA_conc_correct,
+    AA_conc_error = AA_conc_error_correct,
+    sample_key = Cr_data.sample_key,
+    site = Cr_data.site
     )
 AA_data_conc
 ```
+END OF BAD DATA - keep to look at 
+X------------------------------------X
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
