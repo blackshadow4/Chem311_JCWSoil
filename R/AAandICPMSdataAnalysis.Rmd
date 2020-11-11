@@ -390,3 +390,19 @@ Save csv file
 write.csv(Data_Compair, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/Cr_AA_ICPMS_data.csv")
 ```
 
+
+
+
+Bar graph?
+```{r}
+AllData <- c(Data_Compair$ICPMS_conc, Data_Compair$AA_conc)
+Double_key <- c(Data_Compair$sample_key, Data_Compair$sample_key)
+Double_site <- c(Data_Compair$site, Data_Compair$site)
+AllError <- c(Data_Compair$ICPMS_conc_error, Data_Compair$AA_conc_error)
+DataType <- c("ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA")
+All <- data.frame(Double_key, Double_site, AllData, DataType)
+All
+All_BarPlot <- ggplot(data=All, aes(x=Double_key, y=AllData, fill =Double_site, color = DataType)) + scale_fill_manual(values=c("#900C3F", "#9B8800", "#4B9B00", "#007C9B", "#50009B", "#94009B", "#530D6D")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=AllData-AllError, ymax=AllData+AllError), width=.2, position=position_dodge(0.9))
+All_BarPlot
+```
+
