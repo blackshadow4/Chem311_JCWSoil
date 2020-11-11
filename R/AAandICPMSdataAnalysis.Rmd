@@ -96,7 +96,7 @@ sample_analysis <- function(unique_site){
       CPS <- sample_data$cps
       
       #Error Propagation
-      e_yb <- sqrt((RSD/(100*CPS))^2 + (b_e)^2) #Error in y-b from the calibration
+      e_yb <- sqrt(((RSD/100)*CPS)^2 + (b_e)^2) #Error in y-b from the calibration
       yb <- CPS-b
       e_x <- x*sqrt((e_yb/yb)^2 + (m_e/m)^2) #Error in x from the calibration
       
