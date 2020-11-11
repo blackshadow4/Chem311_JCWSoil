@@ -319,22 +319,20 @@ Cr_data_ppb <- data.frame(Cr_data$sample_key, Cr_data$site, AA_conc_correct, AA_
 Cr_data_ppb
 ```
 
-
-THIS IS BAD DATA: IGNORE
 ```{r section by section TEST}
 vol_e <- 1
 mass_e <- 0.001
 dil_1010_e <- sqrt(1^2 + 10^2)
-dil_e <- sqrt((dil_1010_e/1010)^2 + (1/10)^2) #error in 101 dilution factor
+dil_e <- sqrt((dil_1010_e/1010)^2 + (1/10)^2) #error 
 AAsample_data <- merge(AA_tidy_filter, Cr_data) %>% 
   unique()%>%
-  mutate(AAconc_blanked = AA_conc*(total_volume/1000)/(mass_of_soil/1000)*101,
+  mutate(AAconc_blanked = AA_conc*(total_volume/1000)/(mass_of_soil/1000),
          AAconc_blanked_error = AAconc_blanked*
            sqrt((AA_conc_error/AA_conc)^2 + 
                   (dil_e/101)^2 +
                   (mass_e/mass_of_soil)^2 +
                   (vol_e/total_volume)^2),
-         conc_unblanked = xCr*(total_volume/1000)/(mass_of_soil/1000)*101,
+         conc_unblanked = xCr*(total_volume/1000)/(mass_of_soil/1000),
          conc_unblanked_error = conc_unblanked*
            sqrt((xCr_uncertanty/xCr)^2 +
                   (dil_e/101)^2 +
@@ -343,20 +341,27 @@ AAsample_data <- merge(AA_tidy_filter, Cr_data) %>%
 AA_sample_data<- subset(AAsample_data, select = -c(ID, concentration, type, mass_of_soil, total_volume, percent_rsd, analyst, mean_abs, AA_conc, AA_conc_error, AA_abs, AA_abs_error, xCr, xCr_uncertanty))
 
 AA_sample_data
+
+#A test A thought
+AA_conc_correct2 <- AA_sample_data$AAconc_blanked*1000
+AA_conc_error_correct2 <- AA_sample_data$AAconc_blanked_error*1000
+
+Cr_data_ppb2 <- data.frame(Cr_data$sample_key, Cr_data$site, AA_conc_correct2, AA_conc_error_correct2)
+
+Cr_data_ppb2
 ```
 
 ```{r}
-AA_data_conc <- Cr_data_ppb %>% 
+AA_data_conc <- Cr_data_ppb2 %>% 
   rename(
-    AA_conc = AA_conc_correct,
-    AA_conc_error = AA_conc_error_correct,
+    AA_conc = AA_conc_correct2,
+    AA_conc_error = AA_conc_error_correct2,
     sample_key = Cr_data.sample_key,
     site = Cr_data.site
     )
 AA_data_conc
 ```
-END OF BAD DATA - keep to look at 
-X------------------------------------X
+
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
