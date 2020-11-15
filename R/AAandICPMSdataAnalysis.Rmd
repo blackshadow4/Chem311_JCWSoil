@@ -218,225 +218,59 @@ ICPMS_AllData
 ```
 
 USE THIS FOR ICPMS:
-```{r Metals Averaged ICP-MS}
+```{r USE THIS FOR ICPMS: Metals Averaged ICP-MS}
 ICPMS_AllData_Av <- ICPMS_AllData %>%
   group_by(metal)%>%
   group_by(site, add = TRUE)%>%
-  summarise(Concentation_ofMetal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qnorm(0.975)*Concentration_Error_perSite/sqrt(length(site))) )
+  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qnorm(0.975)*Concentration_Error_perSite/sqrt(length(site))) )
+
+ICPMS_AllData_Av_Reorder <- ICPMS_AllData %>%
+  group_by(site)%>%
+  group_by(metal, add = TRUE)%>%
+  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qnorm(0.975)*Concentration_Error_perSite/sqrt(length(site))) )
 
 
 #make bar pot of this w/ CI as error bars x = site, y = metal concentation, fill = metal
+
 ICPMS_AllData_Av
-CIAs75
+ICPMS_AllData_Av_Reorder
+
+ggplot(data=filter(ICPMS_AllData_Av, site != "QC"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (ppb)", x="Site")
+
+```
+```{r T-tests: measurements from any field sites significantly different from the others?}
+t.test()
+
 ```
 
-CI
-```{r}
-SiteA_Data <- ICPMS_AllData %>%
-  filter(site == "A")
-SiteB_Data <- ICPMS_AllData %>%
-  filter(site == "B")
-SiteC_Data <- ICPMS_AllData %>%
-  filter(site == "C")
-SiteD_Data <- ICPMS_AllData %>%
-  filter(site == "D")
-SiteE_Data <- ICPMS_AllData %>%
-  filter(site == "E")
-SiteF_Data <- ICPMS_AllData %>%
-  filter(site == "F")
+```{r QC comparison}
+#1 ppb = 0.001 mg/Kg
+ICPMS_QC_data <- filter(ICPMS_AllData_Av, site == "QC")
+ICPMS_QC_data_notAv <- filter(ICPMS_AllData, site == "QC")
+Buffalo_dataPPB <- c(121900, 150000, 0000, 2940, 121900, 2940)
+Buffalo_errorPPB <- c(3800, 17000, 00000, 290, 3800, 290)
+Buffalo_Table <- data_frame(metals_analyzed, Buffalo_dataPPB, Buffalo_errorPPB)%>%
+  rename(
+    metal = metals_analyzed
+  )
+ICPMS_QC_data_notAv
+ICPMS_QC_data
+Buffalo_Table
 
-for(unique_metal in SiteA_Data){
-  CI_A <- qt(0.95, df = length(SiteA_Data$unique_metal) -1)*ICPMS_AllData_Av$Concentration_Error/sqrt(length(SiteA_Data$unique_metal))
-}
-
-#  CI_A = (qnorm(0.975)*sd(length(SiteA_Data$unique_metal)/sqrt(length(SiteA_Data$unique_metal))))
-
-SiteA_Data
-SiteB_Data
-SiteC_Data
-SiteD_Data
-SiteE_Data
-SiteF_Data
-CI_A
-```
-```{r Averaging site data}
-#---------
-SiteA_As75 <- filter(SiteA_Data, metal == "As75")
-SiteA_As75_Av <- mean(SiteA_As75$Blanked_Concentration)
-
-SiteA_Cd111 <- filter(SiteA_Data, metal == "Cd111")
-SiteA_Cd111_Av <- mean(SiteA_Cd111$Blanked_Concentration)
-
-SiteA_Cd114 <- filter(SiteA_Data, metal == "Cd114")
-SiteA_Cd114_Av <- mean(SiteA_Cd114$Blanked_Concentration)
-
-SiteA_Cr52 <- filter(SiteA_Data, metal == "Cr52")
-SiteA_Cr52_Av <- mean(SiteA_Cr52$Blanked_Concentration)
-
-SiteA_Cr53 <- filter(SiteA_Data, metal == "Cr53")
-SiteA_Cr53_Av <- mean(SiteA_Cr53$Blanked_Concentration)
-
-SiteA_Pb208 <- filter(SiteA_Data, metal == "Pb208")
-SiteA_Pb208_Av <- mean(SiteA_Pb208$Blanked_Concentration)
-
-SiteA_As75_er <- sd(SiteA_As75$Blanked_Concentration_Error)
-SiteA_Cd111_er <- sd(SiteA_Cd111$Blanked_Concentration_Error)
-SiteA_Cd114_er <- sd(SiteA_Cd114$Blanked_Concentration_Error)
-SiteA_Cr52_er <- sd(SiteA_Cr52$Blanked_Concentration_Error)
-SiteA_Cr53_er <- sd(SiteA_Cr53$Blanked_Concentration_Error)
-SiteA_Pb208_er <- sd(SiteA_Pb208$Blanked_Concentration_Error)
-SiteA_er <- c(SiteA_As75_er, SiteA_Cd111_er, SiteA_Cd114_er, SiteA_Cr52_er, SiteA_Cr53_er, SiteA_Pb208_er)
+QC_compTable <- merge(Buffalo_Table, ICPMS_QC_data)
+QC_compTable
+#Percent error
+Percent_error <- (abs((QC_compTable$Concentation_of_Metal-QC_compTable$Buffalo_dataPPB))/QC_compTable$Concentation_of_Metal)*100
+Difference <- abs((QC_compTable$Concentation_of_Metal-QC_compTable$Buffalo_dataPPB))
 
 
-SiteA_Av <- c(SiteA_As75_Av, SiteA_Cd111_Av, SiteA_Cd114_Av, SiteA_Cr52_Av, SiteA_Cr53_Av, SiteA_Pb208_Av)
+QC_compTable$metal
+QC_PDcompTable <- data.frame(QC_compTable$metal, Percent_error, Difference)
+QC_PDcompTable
 
-#---------
-SiteB_As75 <- filter(SiteB_Data, metal == "As75")
-SiteB_As75_Av <- mean(SiteB_As75$Blanked_Concentration)
-
-SiteB_Cd111 <- filter(SiteB_Data, metal == "Cd111")
-SiteB_Cd111_Av <- mean(SiteB_Cd111$Blanked_Concentration)
-
-SiteB_Cd114 <- filter(SiteB_Data, metal == "Cd114")
-SiteB_Cd114_Av <- mean(SiteB_Cd114$Blanked_Concentration)
-
-SiteB_Cr52 <- filter(SiteB_Data, metal == "Cr52")
-SiteB_Cr52_Av <- mean(SiteB_Cr52$Blanked_Concentration)
-
-SiteB_Cr53 <- filter(SiteB_Data, metal == "Cr53")
-SiteB_Cr53_Av <- mean(SiteB_Cr53$Blanked_Concentration)
-
-SiteB_Pb208 <- filter(SiteB_Data, metal == "Pb208")
-SiteB_Pb208_Av <- mean(SiteB_Pb208$Blanked_Concentration)
-
-SiteB_Av <- c(SiteB_As75_Av, SiteB_Cd111_Av, SiteB_Cd114_Av, SiteB_Cr52_Av, SiteB_Cr53_Av, SiteB_Pb208_Av)
-
-SiteB_As75_er <- sd(SiteB_As75$Blanked_Concentration_Error)
-SiteB_Cd111_er <- sd(SiteB_Cd111$Blanked_Concentration_Error)
-SiteB_Cd114_er <- sd(SiteB_Cd114$Blanked_Concentration_Error)
-SiteB_Cr52_er <- sd(SiteB_Cr52$Blanked_Concentration_Error)
-SiteB_Cr53_er <- sd(SiteB_Cr53$Blanked_Concentration_Error)
-SiteB_Pb208_er <- sd(SiteB_Pb208$Blanked_Concentration_Error)
-SiteB_er <- c(SiteB_As75_er, SiteB_Cd111_er, SiteB_Cd114_er, SiteB_Cr52_er, SiteB_Cr53_er, SiteB_Pb208_er)
-#---------
-SiteC_As75 <- filter(SiteC_Data, metal == "As75")
-SiteC_As75_Av <- mean(SiteC_As75$Blanked_Concentration)
-
-SiteC_Cd111 <- filter(SiteC_Data, metal == "Cd111")
-SiteC_Cd111_Av <- mean(SiteC_Cd111$Blanked_Concentration)
-
-SiteC_Cd114 <- filter(SiteC_Data, metal == "Cd114")
-SiteC_Cd114_Av <- mean(SiteC_Cd114$Blanked_Concentration)
-
-SiteC_Cr52 <- filter(SiteC_Data, metal == "Cr52")
-SiteC_Cr52_Av <- mean(SiteC_Cr52$Blanked_Concentration)
-
-SiteC_Cr53 <- filter(SiteC_Data, metal == "Cr53")
-SiteC_Cr53_Av <- mean(SiteC_Cr53$Blanked_Concentration)
-
-SiteC_Pb208 <- filter(SiteC_Data, metal == "Pb208")
-SiteC_Pb208_Av <- mean(SiteC_Pb208$Blanked_Concentration)
-
-SiteC_Av <- c(SiteC_As75_Av, SiteC_Cd111_Av, SiteC_Cd114_Av, SiteC_Cr52_Av, SiteC_Cr53_Av, SiteC_Pb208_Av)
-
-SiteC_As75_er <- sd(SiteC_As75$Blanked_Concentration_Error)
-SiteC_Cd111_er <- sd(SiteC_Cd111$Blanked_Concentration_Error)
-SiteC_Cd114_er <- sd(SiteC_Cd114$Blanked_Concentration_Error)
-SiteC_Cr52_er <- sd(SiteC_Cr52$Blanked_Concentration_Error)
-SiteC_Cr53_er <- sd(SiteC_Cr53$Blanked_Concentration_Error)
-SiteC_Pb208_er <- sd(SiteC_Pb208$Blanked_Concentration_Error)
-SiteC_er <- c(SiteC_As75_er, SiteC_Cd111_er, SiteC_Cd114_er, SiteC_Cr52_er, SiteC_Cr53_er, SiteC_Pb208_er)
-#---------
-SiteD_As75 <- filter(SiteD_Data, metal == "As75")
-SiteD_As75_Av <- mean(SiteD_As75$Blanked_Concentration)
-
-SiteD_Cd111 <- filter(SiteD_Data, metal == "Cd111")
-SiteD_Cd111_Av <- mean(SiteD_Cd111$Blanked_Concentration)
-
-SiteD_Cd114 <- filter(SiteD_Data, metal == "Cd114")
-SiteD_Cd114_Av <- mean(SiteD_Cd114$Blanked_Concentration)
-
-SiteD_Cr52 <- filter(SiteD_Data, metal == "Cr52")
-SiteD_Cr52_Av <- mean(SiteD_Cr52$Blanked_Concentration)
-
-SiteD_Cr53 <- filter(SiteD_Data, metal == "Cr53")
-SiteD_Cr53_Av <- mean(SiteD_Cr53$Blanked_Concentration)
-
-SiteD_Pb208 <- filter(SiteD_Data, metal == "Pb208")
-SiteD_Pb208_Av <- mean(SiteD_Pb208$Blanked_Concentration)
-
-SiteD_Av <- c(SiteD_As75_Av, SiteD_Cd111_Av, SiteD_Cd114_Av, SiteD_Cr52_Av, SiteD_Cr53_Av, SiteD_Pb208_Av)
-
-SiteD_As75_er <- sd(SiteD_As75$Blanked_Concentration_Error)
-SiteD_Cd111_er <- sd(SiteD_Cd111$Blanked_Concentration_Error)
-SiteD_Cd114_er <- sd(SiteD_Cd114$Blanked_Concentration_Error)
-SiteD_Cr52_er <- sd(SiteD_Cr52$Blanked_Concentration_Error)
-SiteD_Cr53_er <- sd(SiteD_Cr53$Blanked_Concentration_Error)
-SiteD_Pb208_er <- sd(SiteD_Pb208$Blanked_Concentration_Error)
-SiteD_er <- c(SiteD_As75_er, SiteD_Cd111_er, SiteD_Cd114_er, SiteD_Cr52_er, SiteD_Cr53_er, SiteD_Pb208_er)
-#---------
-SiteE_As75 <- filter(SiteE_Data, metal == "As75")
-SiteE_As75_Av <- mean(SiteE_As75$Blanked_Concentration)
-
-SiteE_Cd111 <- filter(SiteE_Data, metal == "Cd111")
-SiteE_Cd111_Av <- mean(SiteE_Cd111$Blanked_Concentration)
-
-SiteE_Cd114 <- filter(SiteE_Data, metal == "Cd114")
-SiteE_Cd114_Av <- mean(SiteE_Cd114$Blanked_Concentration)
-
-SiteE_Cr52 <- filter(SiteE_Data, metal == "Cr52")
-SiteE_Cr52_Av <- mean(SiteE_Cr52$Blanked_Concentration)
-
-SiteE_Cr53 <- filter(SiteE_Data, metal == "Cr53")
-SiteE_Cr53_Av <- mean(SiteE_Cr53$Blanked_Concentration)
-
-SiteE_Pb208 <- filter(SiteE_Data, metal == "Pb208")
-SiteE_Pb208_Av <- mean(SiteE_Pb208$Blanked_Concentration)
-
-SiteE_Av <- c(SiteE_As75_Av, SiteE_Cd111_Av, SiteE_Cd114_Av, SiteE_Cr52_Av, SiteE_Cr53_Av, SiteE_Pb208_Av)
-
-SiteE_As75_er <- sd(SiteE_As75$Blanked_Concentration_Error)
-SiteE_Cd111_er <- sd(SiteE_Cd111$Blanked_Concentration_Error)
-SiteE_Cd114_er <- sd(SiteE_Cd114$Blanked_Concentration_Error)
-SiteE_Cr52_er <- sd(SiteE_Cr52$Blanked_Concentration_Error)
-SiteE_Cr53_er <- sd(SiteE_Cr53$Blanked_Concentration_Error)
-SiteE_Pb208_er <- sd(SiteE_Pb208$Blanked_Concentration_Error)
-SiteE_er <- c(SiteE_As75_er, SiteE_Cd111_er, SiteE_Cd114_er, SiteE_Cr52_er, SiteE_Cr53_er, SiteE_Pb208_er)
-#---------
-SiteF_As75 <- filter(SiteF_Data, metal == "As75")
-SiteF_As75_Av <- mean(SiteF_As75$Blanked_Concentration)
-
-SiteF_Cd111 <- filter(SiteF_Data, metal == "Cd111")
-SiteF_Cd111_Av <- mean(SiteF_Cd111$Blanked_Concentration)
-
-SiteF_Cd114 <- filter(SiteF_Data, metal == "Cd114")
-SiteF_Cd114_Av <- mean(SiteF_Cd114$Blanked_Concentration)
-
-SiteF_Cr52 <- filter(SiteF_Data, metal == "Cr52")
-SiteF_Cr52_Av <- mean(SiteF_Cr52$Blanked_Concentration)
-
-SiteF_Cr53 <- filter(SiteF_Data, metal == "Cr53")
-SiteF_Cr53_Av <- mean(SiteF_Cr53$Blanked_Concentration)
-
-SiteF_Pb208 <- filter(SiteF_Data, metal == "Pb208")
-SiteF_Pb208_Av <- mean(SiteF_Pb208$Blanked_Concentration)
-
-SiteF_Av <- c(SiteF_As75_Av, SiteF_Cd111_Av, SiteF_Cd114_Av, SiteF_Cr52_Av, SiteF_Cr53_Av, SiteF_Pb208_Av)
-
-SiteF_As75_er <- sd(SiteF_As75$Blanked_Concentration_Error)
-SiteF_Cd111_er <- sd(SiteF_Cd111$Blanked_Concentration_Error)
-SiteF_Cd114_er <- sd(SiteF_Cd114$Blanked_Concentration_Error)
-SiteF_Cr52_er <- sd(SiteF_Cr52$Blanked_Concentration_Error)
-SiteF_Cr53_er <- sd(SiteF_Cr53$Blanked_Concentration_Error)
-SiteF_Pb208_er <- sd(SiteF_Pb208$Blanked_Concentration_Error)
-SiteF_er <- c(SiteF_As75_er, SiteF_Cd111_er, SiteF_Cd114_er, SiteF_Cr52_er, SiteF_Cr53_er, SiteF_Pb208_er)
-#---------
-Site_metals <- c("As75", "Cd111", "Cd114", "Cr52", "Cr53", "Pb208")
-Site_Av <- data.frame(Site_metals, SiteA_Av, SiteB_Av, SiteC_Av, SiteD_Av, SiteE_Av, SiteF_Av)
-Site_er <- data.frame(Site_metals, SiteA_er, SiteB_er, SiteC_er, SiteD_er, SiteE_er, SiteF_er)
-
-Site_Av
-Site_er
+#Cd111
+#subset(ICPMS_QC_data_notAv, metals_analyzed == "Cd111")
+#t.test(2378.705,2.94, mu= 3)
 ```
 
 
@@ -454,7 +288,7 @@ AA_Data
 AA_tidy_example #name of data_frame being analyzed
 ```
 
-```{r}
+```{r AA data w/o MB}
 sample_sites <- unique(filter(AA_tidy_example, site!="MB", site!="")$site) # excludeing method blank and quality control from list of sites
 #Only Cr so no need to seperate by metal
 AA_tidy_filter <- filter(AA_tidy_example, site!="MB", site!="")
@@ -464,7 +298,7 @@ sample_sites
 AA_tidy_filter
 ```
 
-```{r}
+```{r Calibration curve for AA}
 #what we want
 #concentration Cr(x) to mean abs(y)
 conc_Cr <- c(AA_tidy_example$concentration)
@@ -518,7 +352,7 @@ MB_absAve
 MB_sdAve
 ```
 
-```{r subtract MB-absorbance from Cr mean_abs}
+```{r subtract MB-absorbance from Cr mean_absorbance in AA data}
 for (mean_abs in AA_tidy_filter){
 yCr_corrected <- ((AA_tidy_filter$mean_abs-MB_absAve))
 
@@ -530,7 +364,7 @@ yCr_corrected
 yCr_corrected_uncertanty
 ```
 
-```{r}
+```{r Compilation of AA data in ppm}
 Cr_d1 <- data.frame( AA_tidy_filter$sample_key, AA_tidy_filter$site, xCr, xCr_uncertanty, yCr_corrected, yCr_corrected_uncertanty)
 Cr_data <- Cr_d1 %>% 
   rename(
@@ -543,7 +377,7 @@ Cr_data <- Cr_d1 %>%
     )
 Cr_data
 ```
-```{r}
+```{r Concentration correction from ppm to ppb for AA}
 AA_conc_correct <- Cr_data$AA_conc*1000
 AA_conc_error_correct <- Cr_data$AA_conc_error*1000
 
@@ -552,7 +386,7 @@ Cr_data_ppb <- data.frame(Cr_data$sample_key, Cr_data$site, AA_conc_correct, AA_
 Cr_data_ppb
 ```
 
-```{r section by section TEST}
+```{r Dilution correction for AA data: no 101}
 vol_e <- 1
 mass_e <- 0.001
 dil_1010_e <- sqrt(1^2 + 10^2)
@@ -584,7 +418,7 @@ Cr_data_ppb2 <- data.frame(Cr_data$sample_key, Cr_data$site, AA_conc_correct2, A
 Cr_data_ppb2
 ```
 
-```{r}
+```{r Organized AA data}
 AA_data_conc <- Cr_data_ppb2 %>% 
   rename(
     AA_conc = AA_conc_correct2,
@@ -600,7 +434,7 @@ AA_data_conc
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-```{r}
+```{r Organized ICP-MS [Cr] data}
 ICPMS_d1 <- subset(ICPMS_sample_data, select = -c(metal, analyst, X1, conc_unblanked, conc_unblanked_error))
 ICPMS_d2 <- subset(ICPMS_sample_data, select = -c(metal, analyst, X1, conc_unblanked, conc_unblanked_error))
 
@@ -613,49 +447,48 @@ ICPMS_conc <- ICPMS_d1 %>%
 ICPMS_conc
 ```
 
-```{r}
+```{r Comparioson tables and Barplot between ICP-MS and AA [Cr] includes 95%CI}
 Data_Compair <- merge(ICPMS_conc, AA_data_conc)
 Data_Compair_av <- Data_Compair%>%
   group_by(site)%>%
   summarise(ICPMS_av = mean(ICPMS_conc), ICPMS_av_error = sd(ICPMS_conc), AA_av = mean(AA_conc), AA_av_error = sd(AA_conc), length = length(site), CI_ICPMS = (qnorm(0.975)*ICPMS_av_error/sqrt(length)), CI_AA = (qnorm(0.975)*AA_av_error/sqrt(length)))
+
+AA_r1 <- subset(Data_Compair_av %>%
+                  filter(site != "QC"), select = c(site, AA_av, AA_av_error, length, CI_AA))%>%
+  rename(
+    Average = AA_av,
+    Error = AA_av_error,
+    CI = CI_AA
+  )
+AA_r1["Type"] <- c("AA")
+
+ICPMS_r1 <- subset(Data_Compair_av %>%
+                     filter(site != "QC"), select = c(site, ICPMS_av, ICPMS_av_error, length, CI_ICPMS))%>%
+  rename(
+    Average = ICPMS_av,
+    Error = ICPMS_av_error,
+    CI = CI_ICPMS
+  )
+ICPMS_r1["Type"] <- c("ICPMS")
 
 #Aved data -> make bar plot of AA and ICPMS w/ CI as error bars ppb[] vs Site, color AA/ICPMS
 #make bar plot of ICPMS [metal] vs site, fill=metal
 
 Data_Compair
 Data_Compair_av
+AA_r1
+ICPMS_r1
+
+Data_Compair_Remaster <- rbind(ICPMS_r1, AA_r1)
+Data_Compair_Remaster
+
+ggplot(data=Data_Compair_Remaster, aes(x=site, y=Average, fill = Type)) + scale_fill_manual(values=c("#900C3F", "#516FC5")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Average-CI, ymax=Average+CI), width=.2, position=position_dodge(0.9)) + labs(y="[Cr] ppb",x="Site")
 ```
 
 Save csv file
-```{r}
+```{r Save as csv file}
 write.csv(Data_Compair, file = "~/Chem313Lab05AJed/Chem311_JCWSoil/Data/Cr_AA_ICPMS_data.csv")
 ```
-
-
-
-
-Bar graph?
-```{r}
-AllData <- c(Data_Compair$ICPMS_conc, Data_Compair$AA_conc)
-Double_key <- c(Data_Compair$sample_key, Data_Compair$sample_key)
-Double_site <- c(Data_Compair$site, Data_Compair$site)
-AllError <- c(Data_Compair$ICPMS_conc_error, Data_Compair$AA_conc_error)
-DataType <- c("ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","ICPMS","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA","AA")
-All <- data.frame(Double_key, Double_site, AllData, DataType)
-All
-All_BarPlot <- ggplot(data=All, aes(x=Double_key, y=AllData, fill =Double_site, color = DataType)) + scale_fill_manual(values=c("#900C3F", "#9B8800", "#4B9B00", "#007C9B", "#50009B", "#94009B", "#530D6D")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=AllData-AllError, ymax=AllData+AllError), width=.2, position=position_dodge(0.9))
-All_BarPlot
-```
-
-Confidence Intervals:
-```{r}
-#ICPMS_AllData %>%
-  #group_by()
-CI = (qnorm(0.975)*sd()/sqrt(length(ICPMS_AllData_Av$metal == "As75")))
-#CI95 <- qt(0.95, df= (length(ICPMS_AllData_Av$metal == "As75")-1)*sd(ICPMS_AllData_Av$metal == "As75")
-```
-
-
 
 FOR REPORT:
 ```{r}
