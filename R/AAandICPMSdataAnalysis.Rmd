@@ -1,6 +1,8 @@
 ---
 title: "Untitled"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -48,6 +50,7 @@ for (unique_metal in metals_analyzed){
   intercept <- model$coefficients[1]
   slope_std <- summary(model)$coefficients[2,2]
   intercept_std <- summary(model)$coefficients[1,2]
+  y_uncertanty <- sqrt(deviance(model)/df.residual(model))
   
   #Calibration curve is plotted
   plot(cal$cps ~ cal$concentration,
@@ -56,7 +59,7 @@ for (unique_metal in metals_analyzed){
     abline(model, col="red")+
     title(paste("Calibration for", unique_metal))
   
-  equation <- tibble(metal= unique_metal, slope, slope_std, intercept, intercept_std)
+  equation <- tibble(metal= unique_metal, slope, slope_std, intercept, intercept_std, y_uncertanty)
   ICPMS_cal <- rbind(ICPMS_cal, equation)
 }
 
@@ -64,6 +67,7 @@ ICPMS_cal
 #Clearing the environment (optional, but helps to prevent accidently using the wrong object)
 ## remove(equation, cal, slope, slope_std, intercept, intercept_std, w, model, unique_metal)
 ```
+
 
 4) Create a function to expedite the sample analysis
 ```{r}
@@ -141,7 +145,7 @@ run_sites <- function(Function) {
 6) Analyze the method blank and all the samples
 ```{r}
 MB <- sample_analysis("MB") #(micrograms/kg)
-uncor_sample <- run_sites(sample_analysis) #values do not account for dilutions (mucrograms/kg)
+uncor_sample <- run_sites(sample_analysis) #values do not account for dilutions (micrograms/kg)
 
 #Preview
 MB
@@ -180,11 +184,11 @@ dil_e <- sqrt((dil_1010_e/1010)^2 + (1/10)^2) #error in 101 dilution factor
 
 sample_data <- merge(ICPMS_tidy_example, sample_data_mb)%>% #This adds in important details such as soil mass
   unique()%>%
-  mutate(conc_blanked = conc_dil_blanked*(total_volume/1000)/(mass_of_soil/1000)*101, #101 is the factor diluted by at OHSU to make the solutions dilute enough to run ICPMS on.
+  mutate(conc_blanked = (conc_dil_blanked*(total_volume/1000)/(mass_of_soil/1000)*101), #101 is the factor diluted by at OHSU to make the solutions dilute enough to run ICPMS on. #/1000 to go from ppb to ppm, include vol and mass to get mg/kg
          conc_blanked_error = conc_blanked*
            sqrt((conc_dil_blanked_error/conc_dil_blanked)^2 + 
                   (dil_e/101)^2 +
-                  (mass_e/mass_of_soil)^2 +
+                  (mass_e/(mass_of_soil))^2 +
                   (vol_e/total_volume)^2),
          conc_unblanked = conc_dil*(total_volume/1000)/(mass_of_soil/1000)*101,
          conc_unblanked_error = conc_unblanked*
@@ -203,7 +207,20 @@ sample_data <- merge(ICPMS_tidy_example, sample_data_mb)%>% #This adds in import
          -conc_dil,
          -conc_dil_error)
 
+sample_data1 <- data.frame(sample_data$sample_key, sample_data$metal, sample_data$site, sample_data$conc_blanked/1000, sample_data$conc_blanked_error/1000, sample_data$conc_unblanked/1000, sample_data$conc_unblanked_error/1000)%>%
+  rename(
+    sample_key = sample_data.sample_key,
+    metal = sample_data.metal,
+    site = sample_data.site,
+    conc_blanked = sample_data.conc_blanked.1000,
+    conc_blanked_error = sample_data.conc_blanked_error.1000,
+    conc_unblanked = sample_data.conc_unblanked.1000,
+    conc_unblanked_error = sample_data.conc_unblanked_error.1000,
+  )
+
+sample_data1
 sample_data
+
 ```
 
 ```{r}
@@ -215,6 +232,18 @@ ICPMS_AllData <- subset(sample_data, select = -c(analyst, X1, conc_unblanked, co
     Blanked_Concentration_Error = conc_blanked_error
   )
 ICPMS_AllData
+
+#ppm
+ICPMS_sample_data1 <- filter(sample_data1, metal == "Cr53")
+
+ICPMS_AllData1 <- subset(sample_data1, select = -c(conc_unblanked, conc_unblanked_error)) %>%
+  rename(
+    Blanked_Concentration = conc_blanked,
+    Blanked_Concentration_Error = conc_blanked_error
+  )
+ICPMS_AllData2 <- ICPMS_AllData1 %>%
+  mutate(Blanked_Concentration = as.numeric(Blanked_Concentration))
+ICPMS_AllData2
 ```
 
 USE THIS FOR ICPMS:
@@ -222,12 +251,12 @@ USE THIS FOR ICPMS:
 ICPMS_AllData_Av <- ICPMS_AllData %>%
   group_by(metal)%>%
   group_by(site, add = TRUE)%>%
-  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qnorm(0.975)*Concentration_Error_perSite/sqrt(length(site))) )
+  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qnorm(0.95)*Concentration_Error_perSite/sqrt(length(site))) )
 
 ICPMS_AllData_Av_Reorder <- ICPMS_AllData %>%
   group_by(site)%>%
   group_by(metal, add = TRUE)%>%
-  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qnorm(0.975)*Concentration_Error_perSite/sqrt(length(site))) )
+  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qnorm(0.95)*Concentration_Error_perSite/sqrt(length(site))) )
 
 
 #make bar pot of this w/ CI as error bars x = site, y = metal concentation, fill = metal
@@ -237,14 +266,44 @@ ICPMS_AllData_Av_Reorder
 
 ggplot(data=filter(ICPMS_AllData_Av, site != "QC"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (ppb)", x="Site")
 
-```
-```{r T-tests: measurements from any field sites significantly different from the others?}
-t.test()
+ggplot(data=filter(ICPMS_AllData_Av, site != "QC", metal != "Pb208"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (ppb)", x="Site")
+
+ggplot(data=filter(ICPMS_AllData_Av, site != "QC", metal != "Pb208", metal != "Cr52", metal != "Cr53"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (ppb)", x="Site")
+
+ggplot(data=filter(ICPMS_AllData_Av, site != "QC", metal != "Pb208", metal != "Cr52", metal != "Cr53", metal != "As75"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (ppb)", x="Site")
+
+#ppm
+ICPMS_AllData_Av1 <- ICPMS_AllData1 %>%
+  group_by(metal)%>%
+  group_by(site, add = TRUE)%>%
+  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qt(0.95, df = length(Blanked_Concentration/1000)-1) *Concentration_Error_perSite/sqrt(length(Blanked_Concentration/1000))))
+
+
+ICPMS_AllData_Av_Reorder1 <- ICPMS_AllData1 %>%
+  group_by(site)%>%
+  group_by(metal, add = TRUE)%>%
+  summarise(Concentation_of_Metal = mean(Blanked_Concentration), Concentration_Error_perSite = sd(Blanked_Concentration_Error), CI = (qt(0.95, df = length(Blanked_Concentration/1000)-1) *Concentration_Error_perSite/sqrt(length(Blanked_Concentration/1000)))) #CI = (qnorm(0.95)*Concentration_Error_perSite/sqrt(length(site))) )
+
+
+#make bar pot of this w/ CI as error bars x = site, y = metal concentation, fill = metal
+
+ICPMS_AllData_Av1
+ICPMS_AllData_Av_Reorder1
+
+ggplot(data=filter(ICPMS_AllData_Av1, site != "QC"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (mg/kg)", x="Site")
+
+ggplot(data=filter(ICPMS_AllData_Av1, site != "QC", metal != "Pb208"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (mg/kg)", x="Site")
+
+ggplot(data=filter(ICPMS_AllData_Av1, site != "QC", metal != "Pb208", metal != "Cr52", metal != "Cr53"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FF4545", "#FFA245", "#FFE345", "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (mg/kg)", x="Site")
+
+ggplot(data=filter(ICPMS_AllData_Av1, site != "QC", metal != "Pb208", metal != "Cr52", metal != "Cr53", metal != "As75"), aes(x=site, y=Concentation_of_Metal, fill =metal)) + scale_fill_manual(values=c("#FFA245", "#FFE345", "#FF4545",  "#61FF45", "#45ADFF", "#A245FF")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Concentation_of_Metal-CI, ymax=Concentation_of_Metal+CI), width=.2, position=position_dodge(0.9)) + labs(y="Metal Concentration (mg/kg)", x="Site")
+
 
 ```
+
 
 ```{r QC comparison}
-#1 ppb = 0.001 mg/Kg
+#1 1000 ppb = 1 mg/Kg  --> 
 ICPMS_QC_data <- filter(ICPMS_AllData_Av, site == "QC")
 ICPMS_QC_data_notAv <- filter(ICPMS_AllData, site == "QC")
 Buffalo_dataPPB <- c(121900, 150000, 0000, 2940, 121900, 2940)
@@ -259,34 +318,26 @@ Buffalo_Table
 
 QC_compTable <- merge(Buffalo_Table, ICPMS_QC_data) #the dataset to work from
 QC_compTable 
-#Percent error
-#Percent_error <- (abs((QC_compTable$Concentation_of_Metal-QC_compTable$Buffalo_dataPPB))/QC_compTable$Concentation_of_Metal)*100
-#Difference <- abs((QC_compTable$Concentation_of_Metal-QC_compTable$Buffalo_dataPPB))
 
-
-#QC_compTable$metal
-#QC_PDcompTable <- data.frame(QC_compTable$metal, Percent_error, Difference) # percent error and difference
-#QC_PDcompTable
-
-
-#Gillian's Code QC compare:
-#Units: mass fraction (mg/kg)
-#given_qc <- data.frame(
-#  metal = c("Cd", "Cr", "Pb"),
-#  mass_frac = c(2.94, 121.9, 150),
-#  mass_frac_sd = c(0.29, 3.8, 17)
-#  )
-
-#stats_qc <- ICPMS_AllData_Av %>%
-#  filter(site == "QC") %>%
-#  mutate(mass_fraction = (Concentation_of_Metal/1000))
-
-#given_qc
-#stats_qc
-
-#Percent recovery = amount of substance you actually collected / amount of substance you were supposed to collect
 Percent_Recovery <- (QC_compTable$Concentation_of_Metal/QC_compTable$Buffalo_dataPPB)*100
 Percent_Recovery
+
+#ppm
+ICPMS_QC_data1 <- filter(ICPMS_AllData_Av1, site == "QC")
+ICPMS_QC_data_notAv1 <- filter(ICPMS_AllData1, site == "QC")
+Buffalo_data <- c(121.900, 150.000, 0.000, 2.940, 121.900, 2.940)
+Buffalo_error <- c(3.800, 17.000, 00.000, 0.290, 3.800, 0.290)
+
+Buffalo_Table1 <- data_frame(metals_analyzed, Buffalo_data, Buffalo_error)%>%
+  rename(
+    metal = metals_analyzed
+  )
+
+QC_compTable1 <- merge(Buffalo_Table1, ICPMS_QC_data1) #the dataset to work from
+
+print("Percent_Recovery1")
+Percent_Recovery1 <- (QC_compTable1$Concentation_of_Metal/QC_compTable1$Buffalo_data)*100
+Percent_Recovery1
 ```
 
 
@@ -403,7 +454,7 @@ filter(Cr_data, AA_conc > 1.36)
 ```
 
 
-```{r Concentration correction from ppm to ppb for AA}
+```{r Concentration correction from ppm to ppb for AA/ bad data}
 AA_conc_correct <- Cr_data$AA_conc*1000
 AA_conc_error_correct <- Cr_data$AA_conc_error*1000
 
@@ -419,29 +470,36 @@ dil_1010_e <- sqrt(1^2 + 10^2)
 dil_e <- sqrt((dil_1010_e/1010)^2 + (1/10)^2) #error 
 AAsample_data <- merge(AA_tidy_filter, Cr_data) %>% 
   unique()%>%
-  mutate(AAconc_blanked = AA_conc*(total_volume/1000)/(mass_of_soil/1000),
+  mutate(AAconc_blanked = AA_conc*(AA_tidy_filter$total_volume)/(AA_tidy_filter$mass_of_soil),
          AAconc_blanked_error = AAconc_blanked*
            sqrt((AA_conc_error/AA_conc)^2 + 
                   (dil_e/101)^2 +
-                  (mass_e/mass_of_soil)^2 +
-                  (vol_e/total_volume)^2),
-         conc_unblanked = xCr*(total_volume/1000)/(mass_of_soil/1000),
+                  (mass_e/AA_tidy_filter$mass_of_soil)^2 +
+                  (vol_e/AA_tidy_filter$total_volume)^2),
+         conc_unblanked = xCr*(AA_tidy_filter$total_volume)/(AA_tidy_filter$mass_of_soil),
          conc_unblanked_error = conc_unblanked*
            sqrt((xCr_uncertanty/xCr)^2 +
                   (dil_e/101)^2 +
-                  (mass_e/mass_of_soil)^2 +
-                  (vol_e/total_volume)^2))
+                  (mass_e/AA_tidy_filter$mass_of_soil)^2 +
+                  (vol_e/AA_tidy_filter$total_volume)^2))
 AA_sample_data<- subset(AAsample_data, select = -c(ID, concentration, type, mass_of_soil, total_volume, percent_rsd, analyst, mean_abs, AA_conc, AA_conc_error, AA_abs, AA_abs_error, xCr, xCr_uncertanty))
 
 AA_sample_data
 
 #A test A thought
-AA_conc_correct2 <- AA_sample_data$AAconc_blanked*1000
-AA_conc_error_correct2 <- AA_sample_data$AAconc_blanked_error*1000
+AA_conc_correct2 <- AA_sample_data$AAconc_blanked #it should already be in mg/kg, idk whats up :/
+AA_conc_error_correct2 <- AA_sample_data$AAconc_blanked_error
 
 Cr_data_ppb2 <- data.frame(Cr_data$sample_key, Cr_data$site, AA_conc_correct2, AA_conc_error_correct2)
 
 Cr_data_ppb2
+
+#ppm mg/kg
+Cr_data
+
+filter(Cr_data, AA_conc > 1.36)
+filter(Cr_data, AA_conc > 1.36)
+
 ```
 
 ```{r Organized AA data}
@@ -461,8 +519,8 @@ AA_data_conc
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ```{r Organized ICP-MS [Cr] data}
-ICPMS_d1 <- subset(ICPMS_sample_data, select = -c(metal, analyst, X1, conc_unblanked, conc_unblanked_error))
-ICPMS_d2 <- subset(ICPMS_sample_data, select = -c(metal, analyst, X1, conc_unblanked, conc_unblanked_error))
+ICPMS_d1 <- subset(ICPMS_sample_data1, select = -c(metal, conc_unblanked, conc_unblanked_error))
+ICPMS_d2 <- subset(ICPMS_sample_data1, select = -c(metal, conc_unblanked, conc_unblanked_error))
 
 ICPMS_conc <- ICPMS_d1 %>% 
   rename(
@@ -477,7 +535,7 @@ ICPMS_conc
 Data_Compair <- merge(ICPMS_conc, AA_data_conc)
 Data_Compair_av <- Data_Compair%>%
   group_by(site)%>%
-  summarise(ICPMS_av = mean(ICPMS_conc), ICPMS_av_error = sd(ICPMS_conc), AA_av = mean(AA_conc), AA_av_error = sd(AA_conc), length = length(site), CI_ICPMS = (qnorm(0.975)*ICPMS_av_error/sqrt(length)), CI_AA = (qnorm(0.975)*AA_av_error/sqrt(length)))
+  summarise(ICPMS_av = mean(ICPMS_conc), ICPMS_av_error = sd(ICPMS_conc), AA_av = mean(AA_conc), AA_av_error = sd(AA_conc), length = length(site), CI_ICPMS = (qnorm(0.95)*ICPMS_av_error/sqrt(length)), CI_AA = (qnorm(0.95)*AA_av_error/sqrt(length)))
 
 AA_r1 <- subset(Data_Compair_av %>%
                   filter(site != "QC"), select = c(site, AA_av, AA_av_error, length, CI_AA))%>%
@@ -508,16 +566,8 @@ ICPMS_r1
 Data_Compair_Remaster <- rbind(ICPMS_r1, AA_r1)
 Data_Compair_Remaster
 
-ggplot(data=Data_Compair_Remaster, aes(x=site, y=Average, fill = Type)) + scale_fill_manual(values=c("#900C3F", "#516FC5")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Average-CI, ymax=Average+CI), width=.2, position=position_dodge(0.9)) + labs(y="[Cr] ppb",x="Site")
+ggplot(data=Data_Compair_Remaster, aes(x=site, y=Average, fill = Type)) + scale_fill_manual(values=c("#900C3F", "#516FC5")) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(aes(ymin=Average-CI, ymax=Average+CI), width=.2, position=position_dodge(0.9)) + labs(y="[Cr] (mg/kg)",x="Site")
 ```
-
-```{r lets t-test these fuckers - I as so done - AAAAAAAAAAAAAAAH!!! HELP}
-T_Cd11 <- subset(ICPMS_AllData, metal == "Cd111")
-
-t.test(filter(T_Cd11, site == "B")~filter(T_Cd11, site == "A"), mu=0)
-
-```
-
 
 Save csv file
 ```{r Save as csv file}
